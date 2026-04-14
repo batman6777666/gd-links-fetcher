@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react';
 import { Link2, Trash2, History, Copy, CheckCircle2, XCircle, Zap, Sun, Moon } from 'lucide-react';
 import Loader from './components/Loader';
 
-const API_URL = '/api/fetch-links';
+// API URL configuration - auto-detect environment
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+const API_URL = isLocalhost 
+  ? '/api/fetch-links'  // Local dev (Vite proxy to localhost:3001)
+  : 'https://gdfetcher789-gd-link-fetcher-backend.hf.space/api/fetch-links';  // Production (Hugging Face)
 
 function App() {
   const [inputText, setInputText] = useState('');
