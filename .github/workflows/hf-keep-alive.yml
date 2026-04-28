@@ -1,0 +1,41 @@
+name: HF Space Keep-Alive
+
+on:
+  schedule:
+    # Runs every 5 minutes (Hugging Face sleeps after ~5 minutes)
+    - cron: '*/5 * * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    
+    steps:
+      - name: Ping Hugging Face Space
+        run: |
+          echo "🚀 Pinging Hugging Face Space to keep it awake..."
+          echo "📍 URL: https://gdfetcher789-gdfetcher.hf.space/ping"
+          echo "⏰ Time: $(date -u)"
+          echo ""
+          
+          # First ping - wake up if sleeping
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 https://gdfetcher789-gdfetcher.hf.space/ping)
+          
+          if [ "$RESPONSE" = "200" ]; then
+            echo "✅ SUCCESS - Space is awake! (HTTP $RESPONSE)"
+          else
+            echo "⚠️ Response code: $RESPONSE"
+            echo "Space might be starting up. Waiting 10 seconds and retrying..."
+            sleep 10
+            
+            # Second ping - should work now
+            RESPONSE2=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 https://gdfetcher789-gdfetcher.hf.space/ping)
+            
+            if [ "$RESPONSE2" = "200" ]; then
+              echo "✅ SUCCESS - Space woke up! (HTTP $RESPONSE2)"
+            else
+              echo "❌ FAILED - Space still not responding (HTTP $RESPONSE2)"
+              echo "Will retry in 5 minutes..."
+            fi
+          fi
