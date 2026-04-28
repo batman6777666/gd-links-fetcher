@@ -162,9 +162,25 @@ async function launchBrowser() {
     // Monitor browser for disconnect/crash and auto-restart
     browser.on('disconnected', () => {
       console.log('[BROWSER] Browser disconnected/crashed. Will auto-restart...');
+      if (global.browserHeartbeat) clearInterval(global.browserHeartbeat);
       browser = null;
       setTimeout(launchBrowser, 5000); // Retry in 5 seconds
     });
+
+    // CRITICAL: Browser heartbeat every 5 seconds to prevent disconnection
+    // Puppeteer browser dies if idle - this keeps it alive
+    if (global.browserHeartbeat) clearInterval(global.browserHeartbeat);
+    global.browserHeartbeat = setInterval(async () => {
+      if (browser && browser.isConnected()) {
+        try {
+          // Keep browser alive by checking version (lightweight operation)
+          await browser.version();
+        } catch (e) {
+          // Browser died, will trigger disconnect event
+        }
+      }
+    }, 5000); // Every 5 seconds
+    console.log('[BROWSER] Heartbeat started (every 5 seconds)');
 
   } catch (error) {
     console.error('[BROWSER] Failed to launch Puppeteer:', error.message);
@@ -281,8 +297,8 @@ async function startServer() {
 
   // Self-ping mechanism to keep the Space alive
   // Hugging Face pauses free Spaces after ~5 minutes of inactivity
-  // CRITICAL: Must ping frequently (30 seconds) because HF kills immediately after processing
-  const SELF_PING_INTERVAL = 30 * 1000; // 30 seconds - much more frequent
+  // CRITICAL: Must ping every 5 seconds to prevent HF from pausing
+  const SELF_PING_INTERVAL = 5 * 1000; // 5 seconds - constant activity
 
   function selfPing() {
     const pingUrl = `http://0.0.0.0:${PORT}/ping`;
@@ -314,8 +330,7 @@ process.on('SIGINT', async () => {
 
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received - Hugging Face is pausing the Space. This is normal for free tier.');
-  console.log('The Space will wake up on next request (takes 30-60 seconds).');
-  console.log('To prevent this, ensure GitHub Actions ping is working correctly.');
+  if (global.browserHeartbeat) clearInterval(global.browserHeartbeat);
   if (browser) {
     await browser.close();
     console.log('Browser closed');
