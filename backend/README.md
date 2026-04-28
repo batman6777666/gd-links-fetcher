@@ -1,3 +1,14 @@
+---
+title: GD Links Fetcher
+emoji: 🔗
+colorFrom: purple
+colorTo: blue
+sdk: docker
+sdk_version: "latest"
+app_port: 7860
+pinned: false
+---
+
 # GD Links Fetcher API
 
 Fast API server for extracting direct download links from driveseed.org
