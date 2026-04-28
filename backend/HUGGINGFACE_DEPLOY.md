@@ -56,7 +56,7 @@ Hugging Face will automatically:
 
 Once deployed, test with:
 ```bash
-curl -X POST https://your-username-gd-links-fetcher.hf.space/api/fetch-links \
+curl -X POST https://gd567898765-gd1.hf.space/api/fetch-links \
   -H "Content-Type: application/json" \
   -d '{"links":["https://driveseed.org/file/abc123"]}'
 ```
@@ -124,7 +124,7 @@ curl -X POST https://your-username-gd-links-fetcher.hf.space/api/fetch-links \
 
 Update your frontend `App.jsx` API_URL:
 ```javascript
-const API_URL = 'https://your-username-gd-links-fetcher.hf.space/api/fetch-links';
+const API_URL = 'https://gd567898765-gd1.hf.space/api/fetch-links';
 ```
 
 Or use environment variables for flexibility.
