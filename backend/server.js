@@ -3,6 +3,7 @@ const cors = require('cors');
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 const fetchRoutes = require('./routes/fetch');
 
 // Helper to find Chrome/Chromium executable
@@ -203,21 +204,43 @@ app.use((err, req, res, next) => {
 // Start server
 async function startServer() {
   await launchBrowser();
-  
-  app.listen(PORT, '0.0.0.0', () => {
+
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log('\n========================================');
     console.log('  GD LINKS FETCHER BACKEND');
     console.log('========================================');
     console.log(`  Server running on: http://0.0.0.0:${PORT}`);
     console.log(`  Health check:      http://0.0.0.0:${PORT}/health`);
+    console.log(`  Ping endpoint:     http://0.0.0.0:${PORT}/ping`);
     console.log(`  API Endpoint:      http://0.0.0.0:${PORT}/api/fetch-links`);
     console.log('========================================\n');
   });
+
+  // Self-ping mechanism to keep the Space alive
+  // Hugging Face pauses free Spaces after ~5 minutes of inactivity
+  const SELF_PING_INTERVAL = 3 * 60 * 1000; // 3 minutes
+
+  function selfPing() {
+    const pingUrl = `http://0.0.0.0:${PORT}/ping`;
+    http.get(pingUrl, (res) => {
+      console.log(`[SELF-PING] Status: ${res.statusCode} at ${new Date().toISOString()}`);
+    }).on('error', (err) => {
+      console.log(`[SELF-PING] Error: ${err.message}`);
+    });
+  }
+
+  // Start self-ping after server is ready
+  setTimeout(() => {
+    console.log('[KEEP-ALIVE] Starting self-ping mechanism...');
+    setInterval(selfPing, SELF_PING_INTERVAL);
+  }, 5000);
+
+  return server;
 }
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('Shutting down gracefully...');
+  console.log('SIGINT received - Shutting down gracefully...');
   if (browser) {
     await browser.close();
     console.log('Browser closed');
@@ -226,12 +249,28 @@ process.on('SIGINT', async () => {
 });
 
 process.on('SIGTERM', async () => {
-  console.log('Shutting down gracefully...');
+  console.log('SIGTERM received - Hugging Face is pausing the Space. This is normal for free tier.');
+  console.log('The Space will wake up on next request (takes 30-60 seconds).');
+  console.log('To prevent this, ensure GitHub Actions ping is working correctly.');
   if (browser) {
     await browser.close();
     console.log('Browser closed');
   }
   process.exit(0);
+});
+
+// Prevent crashes from unhandled errors
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err.message);
+  console.error('Stack:', err.stack);
+  console.log('Server will continue running...');
+  // Don't exit - keep the server alive
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  console.log('Server will continue running...');
+  // Don't exit - keep the server alive
 });
 
 startServer();

@@ -14,28 +14,32 @@ jobs:
     steps:
       - name: Ping Hugging Face Space
         run: |
+          # IMPORTANT: Update this URL to match your actual Hugging Face Space URL
+          # Find your URL at: https://huggingface.co/spaces/your-username/your-space-name
+          HF_SPACE_URL="https://gd567898765-gd1.hf.space"
+
           echo "🚀 Pinging Hugging Face Space to keep it awake..."
-          echo "📍 URL: https://gdfetcher789-gd-links.hf.space/ping"
+          echo "📍 URL: ${HF_SPACE_URL}/ping"
           echo "⏰ Time: $(date -u)"
           echo ""
-          
+
           # First ping - wake up if sleeping
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 https://gdfetcher789-gd-links.hf.space/ping)
-          
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 "${HF_SPACE_URL}/ping")
+
           if [ "$RESPONSE" = "200" ]; then
             echo "✅ SUCCESS - Space is awake! (HTTP $RESPONSE)"
           else
             echo "⚠️ Response code: $RESPONSE"
             echo "Space might be starting up. Waiting 10 seconds and retrying..."
             sleep 10
-            
+
             # Second ping - should work now
-            RESPONSE2=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 https://gdfetcher789-gd-links.hf.space/ping)
-            
+            RESPONSE2=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 "${HF_SPACE_URL}/ping")
+
             if [ "$RESPONSE2" = "200" ]; then
               echo "✅ SUCCESS - Space woke up! (HTTP $RESPONSE2)"
             else
               echo "❌ FAILED - Space still not responding (HTTP $RESPONSE2)"
-              echo "Will retry in 5 minutes..."
+              echo "Will retry in 4 minutes..."
             fi
           fi
