@@ -7,7 +7,7 @@ const isLocalhost = window.location.hostname === 'localhost' || window.location.
 
 const API_URL = isLocalhost 
   ? '/api/fetch-links'  // Local dev (Vite proxy to localhost:3001)
-  : 'https://gdfetcher789-gd-link-fetcher-backend.hf.space/api/fetch-links';  // Production (Hugging Face)
+  : 'https://gdfetcher789-gdfetcher.hf.space/api/fetch-links';  // Production (Hugging Face)
 
 function App() {
   const [inputText, setInputText] = useState('');
