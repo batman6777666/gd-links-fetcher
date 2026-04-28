@@ -177,6 +177,15 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', browserReady: browser !== null });
 });
 
+// Ping endpoint for keep-alive (lightweight, no heavy operations)
+app.get('/ping', (req, res) => {
+  res.json({
+    status: 'alive',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error('=== SERVER ERROR ===');
