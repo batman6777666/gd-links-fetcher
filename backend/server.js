@@ -170,13 +170,18 @@ async function launchBrowser() {
     // CRITICAL: Browser heartbeat every 5 seconds to prevent disconnection
     // Puppeteer browser dies if idle - this keeps it alive
     if (global.browserHeartbeat) clearInterval(global.browserHeartbeat);
+    let heartbeatCount = 0;
     global.browserHeartbeat = setInterval(async () => {
       if (browser && browser.isConnected()) {
         try {
           // Keep browser alive by checking version (lightweight operation)
           await browser.version();
+          heartbeatCount++;
+          if (heartbeatCount % 12 === 0) { // Log every minute (12 * 5s)
+            console.log(`[HEARTBEAT] Browser alive (#${heartbeatCount})`);
+          }
         } catch (e) {
-          // Browser died, will trigger disconnect event
+          console.log('[HEARTBEAT] Browser check failed, will reconnect...');
         }
       }
     }, 5000); // Every 5 seconds
@@ -299,21 +304,26 @@ async function startServer() {
   // Hugging Face pauses free Spaces after ~5 minutes of inactivity
   // CRITICAL: Must ping every 5 seconds to prevent HF from pausing
   const SELF_PING_INTERVAL = 5 * 1000; // 5 seconds - constant activity
+  let pingCount = 0;
 
   function selfPing() {
     const pingUrl = `http://0.0.0.0:${PORT}/ping`;
     http.get(pingUrl, (res) => {
-      // Silent success - only log errors to reduce noise
+      pingCount++;
+      if (pingCount % 12 === 0) { // Log every minute (12 * 5s)
+        console.log(`[SELF-PING] Ping #${pingCount} - Status: ${res.statusCode}`);
+      }
     }).on('error', (err) => {
       console.log(`[SELF-PING] Error: ${err.message}`);
     });
   }
 
   // Start self-ping IMMEDIATELY - no delay
-  console.log('[KEEP-ALIVE] Starting self-ping every 30 seconds...');
+  console.log('[KEEP-ALIVE] Starting self-ping every 5 seconds...');
   setInterval(selfPing, SELF_PING_INTERVAL);
   // First ping right now
   selfPing();
+  console.log('[KEEP-ALIVE] First ping sent');
 
   return server;
 }
