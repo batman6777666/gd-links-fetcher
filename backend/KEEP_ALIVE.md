@@ -39,13 +39,13 @@ npm run ping-keeper
 3. Connect your GitHub repo
 4. Build Command: `cd backend && npm install`
 5. Start Command: `cd backend && node ping-keeper.js`
-6. Add Environment Variable: `HF_SPACE_URL=https://gdfetcher789-gdfetcher.hf.space`
+6. Add Environment Variable: `HF_SPACE_URL=https://gdfetcher789-gd-links.hf.space`
 
 #### B. **Railway.app** (Free Tier)
 1. Create account at [railway.app](https://railway.app)
 2. Create new project → Deploy from GitHub
 3. Set Start Command: `node backend/ping-keeper.js`
-4. Add Environment Variable: `HF_SPACE_URL=https://gdfetcher789-gdfetcher.hf.space`
+4. Add Environment Variable: `HF_SPACE_URL=https://gdfetcher789-gd-links.hf.space`
 
 #### C. **GitHub Actions** (Completely Free)
 Create `.github/workflows/ping-keeper.yml`:
@@ -64,7 +64,7 @@ jobs:
     steps:
       - name: Ping HF Space
         run: |
-          curl -f https://gdfetcher789-gdfetcher.hf.space/ping || echo "Space woke up"
+          curl -f https://gdfetcher789-gd-links.hf.space/ping || echo "Space woke up"
 ```
 
 ---
@@ -75,7 +75,7 @@ jobs:
 1. Go to [cron-job.org](https://cron-job.org)
 2. Create account
 3. Add new cron job:
-   - URL: `https://gdfetcher789-gdfetcher.hf.space/ping`
+   - URL: `https://gdfetcher789-gd-links.hf.space/ping`
    - Schedule: Every 4 minutes
    - Method: GET
 
@@ -85,7 +85,7 @@ jobs:
 3. Add new monitor:
    - Monitor Type: HTTP(s)
    - Friendly Name: HF Space Ping
-   - URL: `https://gdfetcher789-gdfetcher.hf.space/ping`
+   - URL: `https://gdfetcher789-gd-links.hf.space/ping`
    - Monitoring Interval: 5 minutes
 
 ---
@@ -96,14 +96,14 @@ jobs:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `HF_SPACE_URL` | Your Hugging Face Space URL | `https://gdfetcher789-gdfetcher.hf.space` |
+| `HF_SPACE_URL` | Your Hugging Face Space URL | `https://gdfetcher789-gd-links.hf.space` |
 | `PING_INTERVAL` | Time between pings (milliseconds) | `240000` (4 minutes) |
 
 ### Custom Configuration Example
 
 ```bash
 # Ping every 3 minutes
-set HF_SPACE_URL=https://gdfetcher789-gdfetcher.hf.space
+set HF_SPACE_URL=https://gdfetcher789-gd-links.hf.space
 set PING_INTERVAL=180000
 npm run ping-keeper
 ```
@@ -118,7 +118,7 @@ The ping keeper logs every request:
 ========================================
   HF SPACE PING KEEPER
 ========================================
-  Target URL:  https://gdfetcher789-gdfetcher.hf.space
+  Target URL:  https://gdfetcher789-gd-links.hf.space
   Ping every:  240s
   Endpoint:    /ping
 ========================================

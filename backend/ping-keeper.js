@@ -1,7 +1,7 @@
 // Ping script to keep Hugging Face Space awake
 // Run this script continuously to prevent the space from sleeping
 
-const HF_SPACE_URL = process.env.HF_SPACE_URL || 'https://gdfetcher789-gdfetcher.hf.space';
+const HF_SPACE_URL = process.env.HF_SPACE_URL || 'https://gdfetcher789-gd-links.hf.space';
 const PING_INTERVAL = process.env.PING_INTERVAL || 240000; // 4 minutes (Hugging Face sleeps after ~5 min of inactivity)
 const PING_ENDPOINT = '/ping';
 

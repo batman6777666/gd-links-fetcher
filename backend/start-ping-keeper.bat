@@ -6,7 +6,7 @@ echo   HF SPACE PING KEEPER
 echo ========================================
 echo.
 echo Starting ping keeper for:
-echo https://gdfetcher789-gdfetcher.hf.space
+echo https://gdfetcher789-gd-links.hf.space
 echo.
 echo This will keep your Hugging Face Space awake 24/7
 echo Keep this window open!

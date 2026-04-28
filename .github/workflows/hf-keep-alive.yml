@@ -15,12 +15,12 @@ jobs:
       - name: Ping Hugging Face Space
         run: |
           echo "🚀 Pinging Hugging Face Space to keep it awake..."
-          echo "📍 URL: https://gdfetcher789-gdfetcher.hf.space/ping"
+          echo "📍 URL: https://gdfetcher789-gd-links.hf.space/ping"
           echo "⏰ Time: $(date -u)"
           echo ""
           
           # First ping - wake up if sleeping
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 https://gdfetcher789-gdfetcher.hf.space/ping)
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 https://gdfetcher789-gd-links.hf.space/ping)
           
           if [ "$RESPONSE" = "200" ]; then
             echo "✅ SUCCESS - Space is awake! (HTTP $RESPONSE)"
@@ -30,7 +30,7 @@ jobs:
             sleep 10
             
             # Second ping - should work now
-            RESPONSE2=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 https://gdfetcher789-gdfetcher.hf.space/ping)
+            RESPONSE2=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 https://gdfetcher789-gd-links.hf.space/ping)
             
             if [ "$RESPONSE2" = "200" ]; then
               echo "✅ SUCCESS - Space woke up! (HTTP $RESPONSE2)"

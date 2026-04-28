@@ -28,7 +28,7 @@ git push origin main
 1. Go to GitHub → Your Repo → **Actions** tab
 2. Wait 4-5 minutes
 3. See "HF Space Keep-Alive" workflow running
-4. Visit: https://gdfetcher789-gdfetcher.hf.space/ping
+4. Visit: https://gdfetcher789-gd-links.hf.space/ping
 5. Should respond instantly!
 
 ---

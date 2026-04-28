@@ -120,7 +120,7 @@ Open `backend/ping-keeper.html`
 1. Go to https://cron-job.org
 2. Create free account
 3. Add cron job:
-   - URL: `https://gdfetcher789-gdfetcher.hf.space/ping`
+   - URL: `https://gdfetcher789-gd-links.hf.space/ping`
    - Schedule: Every 4 minutes
    - Method: GET
 
@@ -129,7 +129,7 @@ Open `backend/ping-keeper.html`
 2. Create free account
 3. Add monitor:
    - Type: HTTP(s)
-   - URL: `https://gdfetcher789-gdfetcher.hf.space/ping`
+   - URL: `https://gdfetcher789-gd-links.hf.space/ping`
    - Interval: 5 minutes
 
 #### **Option C: Render.com / Railway.app**
@@ -166,7 +166,7 @@ git push origin main
 ### **Step 3: Test Your Space**
 
 After 10-15 minutes, visit:
-- https://gdfetcher789-gdfetcher.hf.space/ping
+- https://gdfetcher789-gd-links.hf.space/ping
 
 It should respond **instantly** (not 30-60 seconds).
 
