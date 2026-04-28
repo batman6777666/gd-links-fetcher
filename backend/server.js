@@ -202,6 +202,21 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// Post-response ping to keep Space alive after processing
+app.use((req, res, next) => {
+  const originalEnd = res.end;
+  res.end = function(...args) {
+    // Trigger immediate activity after response sent
+    if (req.path.startsWith('/api')) {
+      setImmediate(() => {
+        http.get(`http://0.0.0.0:${PORT}/ping`, () => {}).on('error', () => {});
+      });
+    }
+    originalEnd.apply(res, args);
+  };
+  next();
+});
+
 // Routes
 app.use('/api', fetchRoutes);
 
@@ -266,22 +281,23 @@ async function startServer() {
 
   // Self-ping mechanism to keep the Space alive
   // Hugging Face pauses free Spaces after ~5 minutes of inactivity
-  const SELF_PING_INTERVAL = 3 * 60 * 1000; // 3 minutes
+  // CRITICAL: Must ping frequently (30 seconds) because HF kills immediately after processing
+  const SELF_PING_INTERVAL = 30 * 1000; // 30 seconds - much more frequent
 
   function selfPing() {
     const pingUrl = `http://0.0.0.0:${PORT}/ping`;
     http.get(pingUrl, (res) => {
-      console.log(`[SELF-PING] Status: ${res.statusCode} at ${new Date().toISOString()}`);
+      // Silent success - only log errors to reduce noise
     }).on('error', (err) => {
       console.log(`[SELF-PING] Error: ${err.message}`);
     });
   }
 
-  // Start self-ping after server is ready
-  setTimeout(() => {
-    console.log('[KEEP-ALIVE] Starting self-ping mechanism...');
-    setInterval(selfPing, SELF_PING_INTERVAL);
-  }, 5000);
+  // Start self-ping IMMEDIATELY - no delay
+  console.log('[KEEP-ALIVE] Starting self-ping every 30 seconds...');
+  setInterval(selfPing, SELF_PING_INTERVAL);
+  // First ping right now
+  selfPing();
 
   return server;
 }
