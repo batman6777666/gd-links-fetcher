@@ -105,26 +105,24 @@ app.use(express.json());
 
 // Global browser instance
 let browser = null;
+let browserLaunchAttempts = 0;
+const MAX_BROWSER_RETRIES = 3;
 
 async function launchBrowser() {
   try {
+    browserLaunchAttempts++;
+    console.log(`[BROWSER] Launch attempt #${browserLaunchAttempts}`);
+
     // Find Chrome executable path dynamically
     const executablePath = findChromeExecutable();
-    
+
     if (!executablePath) {
       console.error('[BROWSER] Chrome/Chromium executable not found!');
-      console.error('[BROWSER] Searched for:');
-      console.error('  - /usr/bin/chromium');
-      console.error('  - /usr/bin/chromium-browser');
-      console.error('  - /usr/bin/google-chrome');
-      console.error('  - /usr/bin/google-chrome-stable');
-      console.error('  - Puppeteer default path');
-      console.error('  - Cache directories');
       throw new Error('Chrome executable not found');
     }
-    
+
     console.log(`[BROWSER] Launching Chrome from: ${executablePath}`);
-    
+
     browser = await puppeteer.launch({
       headless: 'new',
       executablePath: executablePath,
@@ -157,17 +155,50 @@ async function launchBrowser() {
         '--memory-saving-mode'
       ]
     });
+
     console.log('[BROWSER] Puppeteer launched successfully');
+    browserLaunchAttempts = 0; // Reset counter on success
+
+    // Monitor browser for disconnect/crash and auto-restart
+    browser.on('disconnected', () => {
+      console.log('[BROWSER] Browser disconnected/crashed. Will auto-restart...');
+      browser = null;
+      setTimeout(launchBrowser, 5000); // Retry in 5 seconds
+    });
+
   } catch (error) {
     console.error('[BROWSER] Failed to launch Puppeteer:', error.message);
-    // Don't exit - let the server keep running so /ping works
     browser = null;
+
+    // Auto-retry if under max attempts
+    if (browserLaunchAttempts < MAX_BROWSER_RETRIES) {
+      console.log(`[BROWSER] Retrying in 10 seconds... (attempt ${browserLaunchAttempts}/${MAX_BROWSER_RETRIES})`);
+      setTimeout(launchBrowser, 10000);
+    } else {
+      console.log('[BROWSER] Max retries reached. Browser will stay offline but server continues.');
+      console.log('[BROWSER] The /ping endpoint still works. Links can\'t be fetched until browser restarts.');
+    }
   }
 }
 
-// Make browser available to routes
-app.use((req, res, next) => {
-  req.browser = browser;
+// Check if browser is healthy, if not try to restart
+async function ensureBrowser() {
+  if (!browser) {
+    console.log('[BROWSER] Browser not available, attempting to launch...');
+    browserLaunchAttempts = 0; // Reset to allow retry
+    await launchBrowser();
+  }
+  return browser;
+}
+
+// Make browser available to routes - auto-restart if needed
+app.use(async (req, res, next) => {
+  // For API routes, ensure browser is ready
+  if (req.path.startsWith('/api')) {
+    req.browser = await ensureBrowser();
+  } else {
+    req.browser = browser;
+  }
   next();
 });
 
@@ -276,18 +307,23 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-// Prevent crashes from unhandled errors
+// Prevent crashes from unhandled errors - SERVER MUST NEVER DIE
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err.message);
-  console.error('Stack:', err.stack);
-  console.log('Server will continue running...');
-  // Don't exit - keep the server alive
+  console.error('[CRASH PROTECTION] Uncaught Exception:', err.message);
+  console.error('[CRASH PROTECTION] Stack:', err.stack);
+  console.log('[CRASH PROTECTION] Server will continue running...');
+  // NEVER exit - keep the server alive at all costs
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  console.log('Server will continue running...');
-  // Don't exit - keep the server alive
+  console.error('[CRASH PROTECTION] Unhandled Rejection at:', promise, 'reason:', reason);
+  console.log('[CRASH PROTECTION] Server will continue running...');
+  // NEVER exit - keep the server alive at all costs
+});
+
+// Catch everything else
+process.on('warning', (warning) => {
+  console.warn('[WARNING]', warning.name, warning.message);
 });
 
 startServer();
