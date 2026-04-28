@@ -120,7 +120,7 @@ async function launchBrowser() {
       console.error('  - /usr/bin/google-chrome-stable');
       console.error('  - Puppeteer default path');
       console.error('  - Cache directories');
-      process.exit(1);
+      throw new Error('Chrome executable not found');
     }
     
     console.log(`[BROWSER] Launching Chrome from: ${executablePath}`);
@@ -159,8 +159,9 @@ async function launchBrowser() {
     });
     console.log('[BROWSER] Puppeteer launched successfully');
   } catch (error) {
-    console.error('Failed to launch Puppeteer browser:', error.message);
-    process.exit(1);
+    console.error('[BROWSER] Failed to launch Puppeteer:', error.message);
+    // Don't exit - let the server keep running so /ping works
+    browser = null;
   }
 }
 
@@ -178,12 +179,21 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', browserReady: browser !== null });
 });
 
-// Ping endpoint for keep-alive (lightweight, no heavy operations)
+// Ping endpoint for keep-alive - works even if browser isn't ready
 app.get('/ping', (req, res) => {
   res.json({
     status: 'alive',
+    browserReady: browser !== null,
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
+  });
+});
+
+// Wake-up endpoint - lightweight, just returns 200
+app.get('/', (req, res) => {
+  res.json({
+    status: 'GD Links Fetcher is running',
+    endpoints: ['/ping', '/health', '/api/fetch-links']
   });
 });
 
@@ -201,10 +211,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
+// Start server - BROWSER IS OPTIONAL, server starts regardless
 async function startServer() {
-  await launchBrowser();
-
+  // Start server FIRST (before browser) so /ping works immediately
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log('\n========================================');
     console.log('  GD LINKS FETCHER BACKEND');
@@ -214,6 +223,14 @@ async function startServer() {
     console.log(`  Ping endpoint:     http://0.0.0.0:${PORT}/ping`);
     console.log(`  API Endpoint:      http://0.0.0.0:${PORT}/api/fetch-links`);
     console.log('========================================\n');
+  });
+
+  // Launch browser in background - if it fails, server keeps running
+  // /ping will still work, API just won't process links until browser is ready
+  launchBrowser().catch(err => {
+    console.error('[BROWSER] Failed to launch, but server continues running.');
+    console.error('[BROWSER] Error:', err.message);
+    console.log('[BROWSER] The /ping endpoint will still work. Browser will retry on next API call.');
   });
 
   // Self-ping mechanism to keep the Space alive
