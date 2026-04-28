@@ -1,13 +1,26 @@
 const { parseDriveseedPage, selectLink } = require('../utils/driveseedParser');
 const { extractFinalLink } = require('../utils/finalLinkExtractor');
 
-const BATCH_SIZE = 15; // Increased from 10 for faster parallel processing
+const BATCH_SIZE = 3; // REDUCED: Lower memory usage, prevents crashes
 const MAX_RETRIES = 0; // No retries - fail fast for speed
 const TIMEOUT_MS = 15000; // 15 second timeout per link
+const MAX_LINKS = 50; // Prevent overload - max 50 links per request
+const MAX_CACHE_SIZE = 100; // Prevent memory leak - max 100 cached items
 
-// Simple cache for intermediate links
+// Simple cache for intermediate links with LRU eviction
 const linkCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Cache with LRU eviction to prevent memory leak
+function setCache(key, value) {
+  // Evict oldest if at capacity
+  if (linkCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = linkCache.keys().next().value;
+    linkCache.delete(firstKey);
+    console.log(`[CACHE] Evicted oldest entry, size: ${linkCache.size}`);
+  }
+  linkCache.set(key, value);
+}
 
 /**
  * Process a single driveseed link
@@ -60,8 +73,8 @@ async function processLink(browser, originalLink) {
     const duration = Date.now() - startTime;
     
     if (finalLink) {
-      // Cache the result
-      linkCache.set(originalLink, { finalLink, timestamp: Date.now() });
+      // Cache the result with LRU eviction
+      setCache(originalLink, { finalLink, timestamp: Date.now() });
       console.log(`[SUCCESS] ${duration}ms | ${originalLink.substring(0, 50)}...`);
       
       return {
@@ -176,6 +189,13 @@ async function fetchLinks(req, res) {
   if (cleanLinks.length === 0) {
     return res.status(400).json({
       error: 'No valid links provided'
+    });
+  }
+  
+  // Prevent overload - max 50 links per request
+  if (cleanLinks.length > MAX_LINKS) {
+    return res.status(400).json({
+      error: `Too many links. Maximum is ${MAX_LINKS} per request. You sent ${cleanLinks.length}.`
     });
   }
   

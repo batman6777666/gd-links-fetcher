@@ -83,11 +83,16 @@ async function extractFinalLink(browser, url) {
     
     return finalLink;
   } catch (error) {
-    console.error(`Error extracting final link from ${url}:`, error.message);
+    console.error(`[EXTRACTOR] Error extracting final link from ${url}:`, error.message);
     return null;
   } finally {
+    // Always close page to prevent memory leak
     if (page) {
-      await page.close();
+      try {
+        await page.close();
+      } catch (closeError) {
+        // Ignore close errors - page might already be closed
+      }
     }
   }
 }
