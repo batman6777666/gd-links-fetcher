@@ -111,6 +111,17 @@ async function processBatches(browser, links, onBatchComplete) {
     results.push(...batchResults);
     processedCount += batch.length;
     
+    // CRITICAL: Force garbage collection hint between batches
+    // This prevents memory buildup on Hugging Face
+    if (global.gc) {
+      global.gc();
+    }
+    
+    // Small delay between batches to prevent CPU spike
+    if (i + BATCH_SIZE < totalLinks) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
     // Notify frontend of batch completion
     if (onBatchComplete) {
       onBatchComplete({

@@ -11,20 +11,19 @@ async function extractFinalLink(browser, url) {
   try {
     page = await browser.newPage();
     
-    // Block unnecessary resources for speed
+    // Block unnecessary resources for speed and memory efficiency
     await page.setRequestInterception(true);
     page.on('request', (req) => {
       const resourceType = req.resourceType();
-      if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+      if (['image', 'stylesheet', 'font', 'media', 'websocket'].includes(resourceType)) {
         req.abort();
       } else {
         req.continue();
       }
     });
     
-    // Set viewport and user agent
+    // Minimal viewport - reduces memory
     await page.setViewport({ width: 800, height: 600 });
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     
     // Fast navigation - just wait for DOM to load
     const response = await page.goto(url, {
@@ -86,12 +85,24 @@ async function extractFinalLink(browser, url) {
     console.error(`[EXTRACTOR] Error extracting final link from ${url}:`, error.message);
     return null;
   } finally {
-    // Always close page to prevent memory leak
+    // ALWAYS close page - CRITICAL for preventing memory leaks
     if (page) {
       try {
+        // Disable request interception before closing
+        try {
+          await page.setRequestInterception(false);
+        } catch (e) {
+          // Ignore if already disabled
+        }
         await page.close();
+        page = null; // Clear reference
       } catch (closeError) {
-        // Ignore close errors - page might already be closed
+        // Force close if normal close fails
+        try {
+          await page.close();
+        } catch (e) {
+          // Silent fail - page might be already closed
+        }
       }
     }
   }

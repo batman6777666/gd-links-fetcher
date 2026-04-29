@@ -170,23 +170,22 @@ async function launchBrowser() {
       setTimeout(launchBrowser, 5000); // Retry in 5 seconds
     });
 
-    // Browser heartbeat every 60 seconds - REDUCED to save CPU
-    // HF free tier has CPU limits, aggressive heartbeat triggers kill switch
+    // Browser heartbeat every 120 seconds - MINIMAL to prevent HF CPU kill switch
+    // Only check if browser process exists, don't call heavy methods
     if (global.browserHeartbeat) clearInterval(global.browserHeartbeat);
     let heartbeatCount = 0;
     global.browserHeartbeat = setInterval(async () => {
       if (browser && browser.isConnected()) {
-        try {
-          // Lightweight check - just verify connection
-          await browser.version();
-          heartbeatCount++;
+        heartbeatCount++;
+        // Log only every 5 minutes to reduce CPU
+        if (heartbeatCount % 5 === 0) {
           console.log(`[HEARTBEAT] Browser alive (#${heartbeatCount})`);
-        } catch (e) {
-          console.log('[HEARTBEAT] Browser disconnected');
         }
+      } else {
+        console.log('[HEARTBEAT] Browser disconnected');
       }
-    }, 60000); // Every 60 seconds - NOT 5 seconds (reduces CPU usage)
-    console.log('[BROWSER] Heartbeat started (every 60 seconds)');
+    }, 120000); // Every 2 minutes - MINIMAL CPU usage
+    console.log('[BROWSER] Heartbeat started (every 2 minutes - minimal CPU)');
 
   } catch (error) {
     console.error('[BROWSER] Failed to launch Puppeteer:', error.message);
@@ -302,22 +301,25 @@ async function startServer() {
   });
 
   // Self-ping mechanism to keep the Space alive
-  // HF free tier pauses after ~5 minutes, so ping every 4 minutes
-  // REDUCED from 5s to reduce CPU usage - constant activity triggers HF kill switch
-  const SELF_PING_INTERVAL = 4 * 60 * 1000; // 4 minutes - enough to prevent pause
+  // HF free tier pauses after ~5 minutes, so ping every 3 minutes
+  // CRITICAL: Minimal CPU usage to prevent HF kill switch
+  const SELF_PING_INTERVAL = 3 * 60 * 1000; // 3 minutes
   let pingCount = 0;
   let lastActivity = Date.now();
 
   function selfPing() {
     const now = Date.now();
     // Only ping if no recent activity (saves CPU)
-    if (now - lastActivity > 60000) { // 1 minute of inactivity
+    if (now - lastActivity > 120000) { // 2 minutes of inactivity
       const pingUrl = `http://0.0.0.0:${PORT}/ping`;
       http.get(pingUrl, (res) => {
         pingCount++;
-        console.log(`[SELF-PING] Ping #${pingCount} - Status: ${res.statusCode}`);
+        // Only log every 5 pings to reduce I/O
+        if (pingCount % 5 === 0) {
+          console.log(`[SELF-PING] Ping #${pingCount} - Status: ${res.statusCode}`);
+        }
       }).on('error', (err) => {
-        console.log(`[SELF-PING] Error: ${err.message}`);
+        // Silent fail - don't log errors to save I/O
       });
     }
   }

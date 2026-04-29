@@ -1,4 +1,5 @@
 # GD Links Fetcher Backend - Hugging Face Deployment
+# Optimized for HF free tier - prevents auto-pause
 FROM node:18-slim
 
 # Install Chromium and all dependencies
@@ -57,6 +58,10 @@ EXPOSE 7860
 
 # Set Chromium path for Puppeteer
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# Memory optimization for Hugging Face free tier
+ENV NODE_OPTIONS="--expose-gc --max-old-space-size=512"
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 # Start the server (run as root for simplicity)
 CMD ["node", "server.js"]
