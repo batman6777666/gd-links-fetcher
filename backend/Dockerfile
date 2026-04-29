@@ -60,8 +60,8 @@ EXPOSE 7860
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 # Memory optimization for Hugging Face free tier
-ENV NODE_OPTIONS="--expose-gc --max-old-space-size=512"
+ENV NODE_OPTIONS="--max-old-space-size=512"
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
-# Start the server (run as root for simplicity)
-CMD ["node", "server.js"]
+# Start the server with garbage collection enabled
+CMD ["node", "--expose-gc", "server.js"]
