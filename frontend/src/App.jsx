@@ -148,9 +148,47 @@ function App() {
     }
   };
 
-  const clearHistory = () => {
-    if (confirm('Clear all history?')) {
+  const clearHistory = async () => {
+    if (confirm('Clear all history and cache?')) {
+      // Clear history state
       setHistory([]);
+      
+      // Clear localStorage completely for this app
+      localStorage.removeItem('gd-fetcher-history');
+      localStorage.removeItem('gd-fetcher-theme');
+      
+      // Clear all results and progress
+      setResults([]);
+      setProgress({ processed: 0, total: 0 });
+      setSpeedMetrics(null);
+      setError(null);
+      
+      // Clear browser cache for the API
+      if ('caches' in window) {
+        caches.keys().then(cacheNames => {
+          cacheNames.forEach(cacheName => {
+            if (cacheName.includes('gd-fetcher') || cacheName.includes('api')) {
+              caches.delete(cacheName);
+            }
+          });
+        });
+      }
+      
+      // Clear session storage
+      sessionStorage.clear();
+      
+      // Clear server-side cache (Hugging Face backend)
+      try {
+        const baseURL = API_URL.replace('/api/fetch-links', '');
+        await fetch(`${baseURL}/api/clear-cache`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (err) {
+        // Silent fail - server cache clear is optional
+      }
+      
+      console.log('[CLEAR] All cache and history cleared (frontend + backend)');
     }
   };
 

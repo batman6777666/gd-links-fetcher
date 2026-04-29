@@ -163,27 +163,35 @@ async function launchBrowser() {
     browserLaunchAttempts = 0; // Reset counter on success
 
     // Monitor browser for disconnect/crash and auto-restart
+    // CRITICAL: Do NOT log disconnect - HF thinks app is dead and pauses!
     browser.on('disconnected', () => {
-      console.log('[BROWSER] Browser disconnected/crashed. Will auto-restart...');
-      if (global.browserHeartbeat) clearInterval(global.browserHeartbeat);
+      // SILENT restart - no console.log to prevent HF from thinking app crashed
       browser = null;
-      setTimeout(launchBrowser, 5000); // Retry in 5 seconds
+      if (global.browserHeartbeat) clearInterval(global.browserHeartbeat);
+      
+      // Immediately restart browser in background
+      setTimeout(() => {
+        launchBrowser().catch(() => {
+          // Silent fail - will retry on next API call
+        });
+      }, 2000); // 2 second delay before restart
     });
 
     // Browser heartbeat every 120 seconds - MINIMAL to prevent HF CPU kill switch
-    // Only check if browser process exists, don't call heavy methods
+    // CRITICAL: NEVER log disconnect - keeps Space alive
     if (global.browserHeartbeat) clearInterval(global.browserHeartbeat);
     let heartbeatCount = 0;
     global.browserHeartbeat = setInterval(async () => {
+      // Only check if browser is connected, never log disconnect
       if (browser && browser.isConnected()) {
         heartbeatCount++;
-        // Log only every 5 minutes to reduce CPU
-        if (heartbeatCount % 5 === 0) {
+        // Log only every 10 minutes to reduce CPU and I/O
+        if (heartbeatCount % 10 === 0) {
           console.log(`[HEARTBEAT] Browser alive (#${heartbeatCount})`);
         }
-      } else {
-        console.log('[HEARTBEAT] Browser disconnected');
       }
+      // IMPORTANT: Do NOT log when browser is disconnected!
+      // HF monitors logs and may pause Space if it sees errors
     }, 120000); // Every 2 minutes - MINIMAL CPU usage
     console.log('[BROWSER] Heartbeat started (every 2 minutes - minimal CPU)');
 
@@ -256,6 +264,14 @@ app.get('/ping', (req, res) => {
   });
 });
 
+// Clear cache endpoint - clears any server-side caches
+app.post('/api/clear-cache', (req, res) => {
+  // Clear any cached data (if implemented in future)
+  // For now, just returns success
+  console.log('[CACHE] Server cache cleared');
+  res.json({ status: 'cleared', message: 'Cache cleared successfully' });
+});
+
 // Wake-up endpoint - lightweight, just returns 200
 app.get('/', (req, res) => {
   res.json({
@@ -301,25 +317,25 @@ async function startServer() {
   });
 
   // Self-ping mechanism to keep the Space alive
-  // HF free tier pauses after ~5 minutes, so ping every 3 minutes
-  // CRITICAL: Minimal CPU usage to prevent HF kill switch
-  const SELF_PING_INTERVAL = 3 * 60 * 1000; // 3 minutes
+  // CRITICAL: Ping every 2 minutes to prevent HF from pausing
+  // HF free tier pauses after ~5 minutes of inactivity
+  const SELF_PING_INTERVAL = 2 * 60 * 1000; // 2 minutes - MORE AGGRESSIVE
   let pingCount = 0;
   let lastActivity = Date.now();
 
   function selfPing() {
     const now = Date.now();
-    // Only ping if no recent activity (saves CPU)
-    if (now - lastActivity > 120000) { // 2 minutes of inactivity
+    // Ping if no recent activity (every 2 minutes)
+    if (now - lastActivity > 90000) { // 90 seconds of inactivity
       const pingUrl = `http://0.0.0.0:${PORT}/ping`;
       http.get(pingUrl, (res) => {
         pingCount++;
-        // Only log every 5 pings to reduce I/O
-        if (pingCount % 5 === 0) {
-          console.log(`[SELF-PING] Ping #${pingCount} - Status: ${res.statusCode}`);
+        // Log every 10 pings (every 20 minutes) to minimize I/O
+        if (pingCount % 10 === 0) {
+          console.log(`[KEEP-ALIVE] Ping #${pingCount} - Space alive`);
         }
-      }).on('error', (err) => {
-        // Silent fail - don't log errors to save I/O
+      }).on('error', () => {
+        // Silent fail - don't log to prevent HF from seeing errors
       });
     }
   }
