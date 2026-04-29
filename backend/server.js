@@ -152,7 +152,10 @@ async function launchBrowser() {
         '--no-default-browser-check',
         '--no-first-run',
         '--single-process',
-        '--memory-saving-mode'
+        '--memory-saving-mode',
+      '--max_old_space_size=512',
+      '--disable-dev-shm-usage',
+      '--no-zygote'
       ]
     });
 
@@ -167,25 +170,23 @@ async function launchBrowser() {
       setTimeout(launchBrowser, 5000); // Retry in 5 seconds
     });
 
-    // CRITICAL: Browser heartbeat every 5 seconds to prevent disconnection
-    // Puppeteer browser dies if idle - this keeps it alive
+    // Browser heartbeat every 60 seconds - REDUCED to save CPU
+    // HF free tier has CPU limits, aggressive heartbeat triggers kill switch
     if (global.browserHeartbeat) clearInterval(global.browserHeartbeat);
     let heartbeatCount = 0;
     global.browserHeartbeat = setInterval(async () => {
       if (browser && browser.isConnected()) {
         try {
-          // Keep browser alive by checking version (lightweight operation)
+          // Lightweight check - just verify connection
           await browser.version();
           heartbeatCount++;
-          if (heartbeatCount % 12 === 0) { // Log every minute (12 * 5s)
-            console.log(`[HEARTBEAT] Browser alive (#${heartbeatCount})`);
-          }
+          console.log(`[HEARTBEAT] Browser alive (#${heartbeatCount})`);
         } catch (e) {
-          console.log('[HEARTBEAT] Browser check failed, will reconnect...');
+          console.log('[HEARTBEAT] Browser disconnected');
         }
       }
-    }, 5000); // Every 5 seconds
-    console.log('[BROWSER] Heartbeat started (every 5 seconds)');
+    }, 60000); // Every 60 seconds - NOT 5 seconds (reduces CPU usage)
+    console.log('[BROWSER] Heartbeat started (every 60 seconds)');
 
   } catch (error) {
     console.error('[BROWSER] Failed to launch Puppeteer:', error.message);
@@ -301,29 +302,36 @@ async function startServer() {
   });
 
   // Self-ping mechanism to keep the Space alive
-  // Hugging Face pauses free Spaces after ~5 minutes of inactivity
-  // CRITICAL: Must ping every 5 seconds to prevent HF from pausing
-  const SELF_PING_INTERVAL = 5 * 1000; // 5 seconds - constant activity
+  // HF free tier pauses after ~5 minutes, so ping every 4 minutes
+  // REDUCED from 5s to reduce CPU usage - constant activity triggers HF kill switch
+  const SELF_PING_INTERVAL = 4 * 60 * 1000; // 4 minutes - enough to prevent pause
   let pingCount = 0;
+  let lastActivity = Date.now();
 
   function selfPing() {
-    const pingUrl = `http://0.0.0.0:${PORT}/ping`;
-    http.get(pingUrl, (res) => {
-      pingCount++;
-      if (pingCount % 12 === 0) { // Log every minute (12 * 5s)
+    const now = Date.now();
+    // Only ping if no recent activity (saves CPU)
+    if (now - lastActivity > 60000) { // 1 minute of inactivity
+      const pingUrl = `http://0.0.0.0:${PORT}/ping`;
+      http.get(pingUrl, (res) => {
+        pingCount++;
         console.log(`[SELF-PING] Ping #${pingCount} - Status: ${res.statusCode}`);
-      }
-    }).on('error', (err) => {
-      console.log(`[SELF-PING] Error: ${err.message}`);
-    });
+      }).on('error', (err) => {
+        console.log(`[SELF-PING] Error: ${err.message}`);
+      });
+    }
   }
 
-  // Start self-ping IMMEDIATELY - no delay
-  console.log('[KEEP-ALIVE] Starting self-ping every 5 seconds...');
+  // Update activity timestamp on every request
+  app.use((req, res, next) => {
+    lastActivity = Date.now();
+    next();
+  });
+
+  // Start self-ping
+  console.log('[KEEP-ALIVE] Starting self-ping (every 4 min, or on inactivity)');
   setInterval(selfPing, SELF_PING_INTERVAL);
-  // First ping right now
   selfPing();
-  console.log('[KEEP-ALIVE] First ping sent');
 
   return server;
 }
