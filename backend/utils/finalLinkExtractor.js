@@ -13,14 +13,18 @@ async function extractFinalLink(browser, url) {
     
     // Block unnecessary resources for speed and memory efficiency
     await page.setRequestInterception(true);
-    page.on('request', (req) => {
+    
+    // Store the handler reference so we can remove it later
+    const requestHandler = (req) => {
       const resourceType = req.resourceType();
       if (['image', 'stylesheet', 'font', 'media', 'websocket'].includes(resourceType)) {
         req.abort();
       } else {
         req.continue();
       }
-    });
+    };
+    
+    page.on('request', requestHandler);
     
     // Minimal viewport - reduces memory
     await page.setViewport({ width: 800, height: 600 });
@@ -88,18 +92,22 @@ async function extractFinalLink(browser, url) {
     // ALWAYS close page - CRITICAL for preventing memory leaks
     if (page) {
       try {
-        // Disable request interception before closing
-        try {
-          await page.setRequestInterception(false);
-        } catch (e) {
-          // Ignore if already disabled
-        }
+        // Wait a bit for pending requests to complete before closing
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Remove all listeners first to prevent interception errors
+        page.removeAllListeners('request');
+        
+        // Now close the page
         await page.close();
         page = null; // Clear reference
       } catch (closeError) {
         // Force close if normal close fails
         try {
-          await page.close();
+          if (page) {
+            await page.close();
+            page = null;
+          }
         } catch (e) {
           // Silent fail - page might be already closed
         }
