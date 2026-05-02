@@ -3,8 +3,9 @@ title: GD Links Fetcher
 emoji: 🔗
 colorFrom: blue
 colorTo: purple
-sdk: docker
-app_file: backend/server.js
+sdk: static
+app_file: dist/index.html
+app_build_command: npm run build
 pinned: false
 ---
 
