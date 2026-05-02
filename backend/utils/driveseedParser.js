@@ -2,7 +2,7 @@ const fetch = require('node-fetch');
 
 /**
  * Parse driveseed.org page and extract instant download links (OPTIMIZED)
- * Priority: V2 (instant.video-leech.pro) > Regular (cdn.video-leech.pro)
+ * Priority: V2 (instant.video-*) > Regular (cdn.video-*)
  * @param {string} url - driveseed.org URL
  * @returns {Promise<{v2Link: string|null, regularLink: string|null}>}
  */
@@ -30,9 +30,9 @@ async function parseDriveseedPage(url) {
 
     const html = await response.text();
     
-    // Fast regex extraction instead of full Cheerio parsing
-    const v2Match = html.match(/href="(https?:\/\/instant\.video-leech\.pro\/[^"]+)"/);
-    const regularMatch = html.match(/href="(https?:\/\/cdn\.video-leech\.pro\/[^"]+)"/);
+    // Flexible regex to handle domain changes (video-leech.pro, video-gen.xyz, etc.)
+    const v2Match = html.match(/href="(https?:\/\/instant\.video-[^/"]+\/[^"]+)"/);
+    const regularMatch = html.match(/href="(https?:\/\/cdn\.video-[^/"]+\/[^"]+)"/);
     
     const v2Link = v2Match ? v2Match[1] : null;
     const regularLink = regularMatch ? regularMatch[1] : null;
