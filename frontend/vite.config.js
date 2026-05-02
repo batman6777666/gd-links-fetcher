@@ -22,7 +22,7 @@ export default defineConfig({
   plugins: [react(), startupMessagePlugin()],
   server: {
     port: 5173,
-    open: true,
+    open: false,
     proxy: {
       '/api': {
         target: 'http://localhost:7860',
