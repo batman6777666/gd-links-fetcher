@@ -317,39 +317,26 @@ async function startServer() {
   });
 
   // Self-ping mechanism to keep the Space alive
-  // CRITICAL: Ping every 2 minutes to prevent HF from pausing
-  // HF free tier pauses after ~5 minutes of inactivity
-  const SELF_PING_INTERVAL = 2 * 60 * 1000; // 2 minutes - MORE AGGRESSIVE
-  let pingCount = 0;
-  let lastActivity = Date.now();
+  // CRITICAL: Activity every 2 seconds to prevent HF from pausing
+  // Logs must show NON-STOP activity
+  const ACTIVITY_INTERVAL = 2000; // 2 seconds - CONSTANT ACTIVITY
+  let activityCount = 0;
 
-  function selfPing() {
-    const now = Date.now();
-    // Ping if no recent activity (every 2 minutes)
-    if (now - lastActivity > 90000) { // 90 seconds of inactivity
-      const pingUrl = `http://0.0.0.0:${PORT}/ping`;
-      http.get(pingUrl, (res) => {
-        pingCount++;
-        // Log every 10 pings (every 20 minutes) to minimize I/O
-        if (pingCount % 10 === 0) {
-          console.log(`[KEEP-ALIVE] Ping #${pingCount} - Space alive`);
-        }
-      }).on('error', () => {
-        // Silent fail - don't log to prevent HF from seeing errors
-      });
-    }
+  function showActivity() {
+    activityCount++;
+    // Ping the server and log EVERY time for visible activity
+    const pingUrl = `http://0.0.0.0:${PORT}/ping`;
+    http.get(pingUrl, (res) => {
+      console.log(`[ALIVE] Activity #${activityCount} - Status: ${res.statusCode} - ${new Date().toISOString()}`);
+    }).on('error', (err) => {
+      console.log(`[ALIVE] Activity #${activityCount} - Error: ${err.message}`);
+    });
   }
 
-  // Update activity timestamp on every request
-  app.use((req, res, next) => {
-    lastActivity = Date.now();
-    next();
-  });
-
-  // Start self-ping
-  console.log('[KEEP-ALIVE] Starting self-ping (every 4 min, or on inactivity)');
-  setInterval(selfPing, SELF_PING_INTERVAL);
-  selfPing();
+  // Start constant activity - NEVER stops
+  console.log('[ALIVE] Starting NON-STOP activity every 2 seconds...');
+  setInterval(showActivity, ACTIVITY_INTERVAL);
+  showActivity(); // First activity immediately
 
   return server;
 }
