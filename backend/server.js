@@ -106,9 +106,29 @@ app.use(express.json());
 // Global browser instance
 let browser = null;
 let browserLaunchAttempts = 0;
+let isLaunching = false;
+let launchPromise = null;
 const MAX_BROWSER_RETRIES = 3;
 
 async function launchBrowser() {
+  // If already launching, wait for the existing launch to complete
+  if (isLaunching && launchPromise) {
+    console.log('[BROWSER] Launch already in progress, waiting...');
+    return launchPromise;
+  }
+
+  isLaunching = true;
+  launchPromise = _doLaunchBrowser();
+
+  try {
+    return await launchPromise;
+  } finally {
+    isLaunching = false;
+    launchPromise = null;
+  }
+}
+
+async function _doLaunchBrowser() {
   try {
     browserLaunchAttempts++;
     console.log(`[BROWSER] Launch attempt #${browserLaunchAttempts}`);
@@ -151,7 +171,6 @@ async function launchBrowser() {
         '--mute-audio',
         '--no-default-browser-check',
         '--no-first-run',
-        '--single-process',
         '--memory-saving-mode',
       '--max_old_space_size=512',
       '--disable-dev-shm-usage',
@@ -215,7 +234,8 @@ async function ensureBrowser() {
   if (!browser) {
     console.log('[BROWSER] Browser not available, attempting to launch...');
     browserLaunchAttempts = 0; // Reset to allow retry
-    await launchBrowser();
+    const result = await launchBrowser();
+    return result;
   }
   return browser;
 }
@@ -228,21 +248,6 @@ app.use(async (req, res, next) => {
   } else {
     req.browser = browser;
   }
-  next();
-});
-
-// Post-response ping to keep Space alive after processing
-app.use((req, res, next) => {
-  const originalEnd = res.end;
-  res.end = function(...args) {
-    // Trigger immediate activity after response sent
-    if (req.path.startsWith('/api')) {
-      setImmediate(() => {
-        http.get(`http://0.0.0.0:${PORT}/ping`, () => {}).on('error', () => {});
-      });
-    }
-    originalEnd.apply(res, args);
-  };
   next();
 });
 
@@ -315,28 +320,6 @@ async function startServer() {
     console.error('[BROWSER] Error:', err.message);
     console.log('[BROWSER] The /ping endpoint will still work. Browser will retry on next API call.');
   });
-
-  // Self-ping mechanism to keep the Space alive
-  // CRITICAL: Activity every 2 seconds to prevent HF from pausing
-  // Logs must show NON-STOP activity
-  const ACTIVITY_INTERVAL = 2000; // 2 seconds - CONSTANT ACTIVITY
-  let activityCount = 0;
-
-  function showActivity() {
-    activityCount++;
-    // Ping the server and log EVERY time for visible activity
-    const pingUrl = `http://0.0.0.0:${PORT}/ping`;
-    http.get(pingUrl, (res) => {
-      console.log(`[ALIVE] Activity #${activityCount} - Status: ${res.statusCode} - ${new Date().toISOString()}`);
-    }).on('error', (err) => {
-      console.log(`[ALIVE] Activity #${activityCount} - Error: ${err.message}`);
-    });
-  }
-
-  // Start constant activity - NEVER stops
-  console.log('[ALIVE] Starting NON-STOP activity every 2 seconds...');
-  setInterval(showActivity, ACTIVITY_INTERVAL);
-  showActivity(); // First activity immediately
 
   return server;
 }
