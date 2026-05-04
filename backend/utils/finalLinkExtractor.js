@@ -7,6 +7,7 @@
  */
 async function extractFinalLink(browser, url) {
   let page = null;
+  let pageAlive = true;
   
   try {
     page = await browser.newPage();
@@ -16,11 +17,14 @@ async function extractFinalLink(browser, url) {
     
     // Store the handler reference so we can remove it later
     const requestHandler = (req) => {
+      // Guard against race condition when page is being closed
+      if (!pageAlive) return;
+      
       const resourceType = req.resourceType();
       if (['image', 'stylesheet', 'font', 'media', 'websocket'].includes(resourceType)) {
-        req.abort();
+        req.abort().catch(() => {});
       } else {
-        req.continue();
+        req.continue().catch(() => {});
       }
     };
     
@@ -92,6 +96,9 @@ async function extractFinalLink(browser, url) {
     // ALWAYS close page - CRITICAL for preventing memory leaks
     if (page) {
       try {
+        // Mark page as not alive to stop request handlers
+        pageAlive = false;
+        
         // Wait a bit for pending requests to complete before closing
         await new Promise(resolve => setTimeout(resolve, 100));
         
