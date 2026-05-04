@@ -7,7 +7,7 @@ const isLocalhost = window.location.hostname === 'localhost' || window.location.
 
 const API_URL = isLocalhost 
   ? '/api/fetch-links'  // Local dev (Vite proxy to localhost:3001)
-  : 'https://gdfetcher789-gd1.hf.space/api/fetch-links';  // Production (Hugging Face)
+  : 'https://gd-links-fetcher-production.up.railway.app/api/fetch-links';  // Production (Railway)
 
 function App() {
   const [inputText, setInputText] = useState('');
@@ -177,7 +177,7 @@ function App() {
       // Clear session storage
       sessionStorage.clear();
       
-      // Clear server-side cache (Hugging Face backend)
+      // Clear server-side cache (Railway backend)
       try {
         const baseURL = API_URL.replace('/api/fetch-links', '');
         await fetch(`${baseURL}/api/clear-cache`, {
